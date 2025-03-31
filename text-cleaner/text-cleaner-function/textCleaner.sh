@@ -1,12 +1,12 @@
 #!/bin/bash
 textCleaner() {
   echo "textCleaner Called from: ${BASH_SOURCE[1]} at line ${BASH_LINENO[0]}"
-  textCleaner_start_session > /dev/null
   local TMUX_SESSION_NAME="text-cleaner"
   local SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
   local PROMPT_FILE=""
   local CUSTOM_TEXT=""
   local NO_HISTORY=false
+  local DEFAULT_WORKHORSE="cwh-fixHungarianText"
   
   textCleanerDebug_log "Starting textCleaner function"
   textCleanerDebug_log "DISPLAY=$DISPLAY"
@@ -21,13 +21,18 @@ textCleaner() {
         CUSTOM_TEXT="$2"
         shift 2
         ;;
+      --workhorse|-w)
+        DEFAULT_WORKHORSE="$2"
+        shift 2
+        ;;
       help|--help|-h)
         echo "Usage: textCleaner [OPTIONS]"
         echo ""
         echo "Options:"
-        echo "  --cmd COMMAND       Specify command (e.g., 'view', 'stop', 'start')"
-        echo "  --text, -t TEXT          Clean specific text instead of clipboard"
-        echo "  --help, -h               Show this help message"
+        echo "  --cmd COMMAND           Specify command (e.g., 'view', 'stop', 'start')"
+        echo "  --text, -t TEXT         Clean specific text instead of clipboard"
+        echo "  --workhorse, -w NAME    Specify default clipboard workhorse function"
+        echo "  --help, -h              Show this help message"
         return 0
         ;;
       *)
@@ -60,14 +65,50 @@ textCleaner() {
     if ! tmux has-session -t "$TMUX_SESSION_NAME" 2>/dev/null; then
       textCleanerDebug_log "Creating new tmux session: $TMUX_SESSION_NAME"
       tmux new-session -d -s "$TMUX_SESSION_NAME"
+      
+      # Set up the environment in the new session
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "export DISPLAY=:1"
+      
+      # Set the default workhorse if specified
+      if [[ -n "$DEFAULT_WORKHORSE" ]]; then
+        if [[ "$DEFAULT_WORKHORSE" != cwh-* ]] && declare -F "cwh-$DEFAULT_WORKHORSE" > /dev/null; then
+          DEFAULT_WORKHORSE="cwh-$DEFAULT_WORKHORSE"
+        fi
+        
+        if declare -F "$DEFAULT_WORKHORSE" > /dev/null; then
+          textCleaner_send_keys "$TMUX_SESSION_NAME" "export CLIPBOARD_DISPATCHER_COMMAND=\"$DEFAULT_WORKHORSE\""
+          textCleanerDebug_log "Default workhorse set to: $DEFAULT_WORKHORSE"
+        else
+          textCleanerDebug_log "Warning: Default workhorse $DEFAULT_WORKHORSE not found"
+        fi
+      fi
+      
       return 0
     else
       textCleanerDebug_log "Session exists, updating environment"
       textCleaner_send_keys "$TMUX_SESSION_NAME" "export DISPLAY=:1"
+      
+      # Update the workhorse if specified
+      if [[ -n "$DEFAULT_WORKHORSE" ]]; then
+        if [[ "$DEFAULT_WORKHORSE" != cwh-* ]] && declare -F "cwh-$DEFAULT_WORKHORSE" > /dev/null; then
+          DEFAULT_WORKHORSE="cwh-$DEFAULT_WORKHORSE"
+        fi
+        
+        if declare -F "$DEFAULT_WORKHORSE" > /dev/null; then
+          textCleaner_send_keys "$TMUX_SESSION_NAME" "export CLIPBOARD_DISPATCHER_COMMAND=\"$DEFAULT_WORKHORSE\""
+          textCleanerDebug_log "Default workhorse updated to: $DEFAULT_WORKHORSE"
+        else
+          textCleanerDebug_log "Warning: Default workhorse $DEFAULT_WORKHORSE not found"
+        fi
+      fi
+      
       textCleanerDebug_log "Text cleaner session already running"
       return 0
     fi
   }
+  
+  # Start the session before processing commands
+  textCleaner_start_session
   
   case "$CMD" in
     stop)
@@ -84,8 +125,31 @@ textCleaner() {
       return 0
       ;;
     start)
-      textCleaner_start_session
       echo "Text cleaner session started."
+      return 0
+      ;;
+    set-workhorse)
+      if [[ -n "$DEFAULT_WORKHORSE" ]]; then
+        if [[ "$DEFAULT_WORKHORSE" != cwh-* ]] && declare -F "cwh-$DEFAULT_WORKHORSE" > /dev/null; then
+          DEFAULT_WORKHORSE="cwh-$DEFAULT_WORKHORSE"
+        fi
+        
+        if declare -F "$DEFAULT_WORKHORSE" > /dev/null; then
+          textCleaner_send_keys "$TMUX_SESSION_NAME" "export CLIPBOARD_DISPATCHER_COMMAND=\"$DEFAULT_WORKHORSE\""
+          echo "Workhorse set to: $DEFAULT_WORKHORSE"
+        else
+          echo "Error: Workhorse $DEFAULT_WORKHORSE not found"
+          return 1
+        fi
+      else
+        echo "Error: No workhorse specified"
+        return 1
+      fi
+      return 0
+      ;;
+    "")
+      # No command provided, just ensure the session is started
+      echo "Text cleaner session is running."
       return 0
       ;;
     *)
