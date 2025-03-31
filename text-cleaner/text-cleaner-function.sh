@@ -1,17 +1,27 @@
 #!/bin/bash
 # Text cleaner function with tmux session management and completion notification
+# Debug mode enabled
 
-# Function to manage the text cleaner tmux session and operations
+# Set DISPLAY explicitly to match your environment
+export DISPLAY=:1
+
+# Function to log debug messages
+debug_log() {
+  echo "[DEBUG $(date '+%H:%M:%S')] $1" >&2
+}
+
 textCleaner() {
   local TMUX_SESSION_NAME="text-cleaner"
   local SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
   
-  # Command options
   local CMD="clean"
   local PROMPT_FILE=""
   local CUSTOM_TEXT=""
+  local NO_HISTORY=false
   
-  # Parse options
+  debug_log "Starting textCleaner function"
+  debug_log "DISPLAY=$DISPLAY"
+  
   while [[ $# -gt 0 ]]; do
     case "$1" in
       clean|--clean|-c)
@@ -38,6 +48,10 @@ textCleaner() {
         CUSTOM_TEXT="$2"
         shift 2
         ;;
+      no-history|--no-history|-n)
+        NO_HISTORY=true
+        shift
+        ;;
       help|--help|-h)
         echo "Usage: textCleaner [COMMAND] [OPTIONS]"
         echo ""
@@ -50,11 +64,11 @@ textCleaner() {
         echo "Options:"
         echo "  --prompt-file, -p FILE   Use custom prompt file"
         echo "  --text, -t TEXT          Clean specific text instead of clipboard"
+        echo "  --no-history, -n         Prevent commands from being saved in bash history"
         echo "  --help, -h               Show this help message"
         return 0
         ;;
       *)
-        # If no recognized command/option, assume it's text to clean
         if [[ -z "$CUSTOM_TEXT" ]]; then
           CUSTOM_TEXT="$1"
         fi
@@ -63,14 +77,12 @@ textCleaner() {
     esac
   done
   
-  # Check if tmux is installed
   if ! command -v tmux &> /dev/null; then
     echo "Error: tmux is not installed. Please install it first."
     echo "Run: sudo apt install tmux"
     return 1
   fi
   
-  # Stop command - kill the session
   if [[ "$CMD" == "stop" ]]; then
     if tmux has-session -t "$TMUX_SESSION_NAME" 2>/dev/null; then
       tmux kill-session -t "$TMUX_SESSION_NAME"
@@ -81,156 +93,123 @@ textCleaner() {
     return 0
   fi
   
-  # Function to start tmux session
   textCleaner_start_session() {
     if ! tmux has-session -t "$TMUX_SESSION_NAME" 2>/dev/null; then
-      echo "Creating new tmux session: $TMUX_SESSION_NAME"
-      
-      # Create a new detached session
+      debug_log "Creating new tmux session: $TMUX_SESSION_NAME"
       tmux new-session -d -s "$TMUX_SESSION_NAME"
+      tmux send-keys -t "$TMUX_SESSION_NAME" "export DISPLAY=:1" C-m
       
-      # Load necessary environment and source files
+      # Set history control if requested
+      if [[ "$NO_HISTORY" == true ]]; then
+        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups" C-m
+        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'" C-m
+      fi
+      
       tmux send-keys -t "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR" C-m
       tmux send-keys -t "$TMUX_SESSION_NAME" "source ./cleanClipboardText.sh" C-m
       tmux send-keys -t "$TMUX_SESSION_NAME" "echo 'Text cleaner session initialized and ready'" C-m
-      
-      # Wait for initialization
       sleep 1
-      echo "Text cleaner session started and ready."
+      debug_log "Text cleaner session started and ready"
       return 0
     else
-      # Session exists, make sure we're in the right directory (in case it changed)
+      debug_log "Session exists, updating environment"
+      tmux send-keys -t "$TMUX_SESSION_NAME" "export DISPLAY=:1" C-m
+      
+      # Set history control if requested
+      if [[ "$NO_HISTORY" == true ]]; then
+        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups" C-m
+        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'" C-m
+      fi
+      
       tmux send-keys -t "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR" C-m
-      echo "Text cleaner session already running."
+      debug_log "Text cleaner session already running"
       return 0
     fi
   }
 
-  # Start command - just start the session
   if [[ "$CMD" == "start" ]]; then
     textCleaner_start_session
     return 0
   fi
   
-  # Ensure tmux session exists for other commands
   textCleaner_start_session > /dev/null
   
-  # View command - attach to the session
   if [[ "$CMD" == "view" ]]; then
     tmux attach-session -t "$TMUX_SESSION_NAME"
     return 0
   fi
   
-  # Clean command - process text
   if [[ "$CMD" == "clean" ]]; then
-    # Prepare the cleaning command
-    local CLEAN_CMD="cleanClipboardText"
+    local CLEAN_CMD=""
     
-    # Add prompt file if specified
+    # Prefix with space if no-history is enabled (HISTCONTROL=ignorespace)
+    if [[ "$NO_HISTORY" == true ]]; then
+      CLEAN_CMD=" cleanClipboardText"
+    else
+      CLEAN_CMD="cleanClipboardText"
+    fi
+    
     if [[ -n "$PROMPT_FILE" ]]; then
       CLEAN_CMD="${CLEAN_CMD} --prompt-file \"${PROMPT_FILE}\""
     fi
-    
-    # If custom text is provided, put it in clipboard first
     if [[ -n "$CUSTOM_TEXT" ]]; then
-      # We need to escape quotes in the text
       local ESCAPED_TEXT=$(echo "$CUSTOM_TEXT" | sed 's/"/\"/g')
       tmux send-keys -t "$TMUX_SESSION_NAME" "echo \"${ESCAPED_TEXT}\" | xclip -selection clipboard" C-m
-      sleep 0.5 # Give a moment for clipboard to update
+      sleep 0.5
+      debug_log "Set custom text to clipboard: $CUSTOM_TEXT"
     fi
     
-    # Send a notification at the beginning of the process
+    debug_log "Checking notify-send availability"
     if command -v notify-send &> /dev/null; then
-      notify-send -u normal -t 5000 "Text Cleaner" "Cleaning text in progress..."
-    elif command -v zenity &> /dev/null; then
-      zenity --notification --text="Text Cleaner: Cleaning in progress..." &
-    elif command -v osascript &> /dev/null; then
-      osascript -e 'display notification "Cleaning in progress..." with title "Text Cleaner"'
+      debug_log "Sending initial notification"
+       || debug_log "Initial notify-send failed"
     else
+      debug_log "notify-send not found, using echo"
       echo "Cleaning text in progress..."
     fi
     
-    # Create notification functions in the tmux session
     tmux send-keys -t "$TMUX_SESSION_NAME" "
-    # Function to send completion notification that ensures visibility
     function notifyCompletion() {
       local status=\$1
-      
-      # Try multiple notification methods to ensure something shows up
       if command -v notify-send &> /dev/null; then
-        # Linux notification (ensure it stays visible longer with -t 10000 = 10 seconds)
         if [[ \"\$status\" == \"0\" ]]; then
-          notify-send -u critical -t 10000 \"Text Cleaner\" \"✅ Text cleaned successfully and copied to clipboard!\"
+          notify-send -u critical \"Text Cleaner\" \"Text cleaned successfully and copied to clipboard!\" || echo '[DEBUG] notify-send failed in tmux' >&2
         else
-          notify-send -u critical -t 10000 \"Text Cleaner\" \"❌ Error: Text cleaning process failed!\"
-        fi
-      elif command -v zenity &> /dev/null; then
-        # Alternative Linux notification using zenity
-        if [[ \"\$status\" == \"0\" ]]; then
-          zenity --info --title=\"Text Cleaner\" --text=\"✅ Text cleaned successfully and copied to clipboard!\" &
-        else
-          zenity --error --title=\"Text Cleaner\" --text=\"❌ Error: Text cleaning process failed!\" &
-        fi
-      elif command -v osascript &> /dev/null; then
-        # macOS notification
-        if [[ \"\$status\" == \"0\" ]]; then
-          osascript -e 'display dialog \"✅ Text cleaned successfully and copied to clipboard!\" with title \"Text Cleaner\" buttons {\"OK\"} default button \"OK\"'
-        else
-          osascript -e 'display dialog \"❌ Error: Text cleaning process failed!\" with title \"Text Cleaner\" buttons {\"OK\"} default button \"OK\"'
+          notify-send -u critical \"Text Cleaner\" \"Error: Text cleaning process failed!\" || echo '[DEBUG] notify-send failed in tmux' >&2
         fi
       else
-        # Fallback to terminal output
         if [[ \"\$status\" == \"0\" ]]; then
-          echo \"✅ Text cleaned successfully and copied to clipboard!\"
+          echo \"Text cleaned successfully and copied to clipboard!\"
         else
-          echo \"❌ Error: Text cleaning process failed!\"
+          echo \"Error: Text cleaning process failed!\"
         fi
       fi
     }
     " C-m
     
-    # Run the cleaning command in tmux and add notification for completion
     tmux send-keys -t "$TMUX_SESSION_NAME" "
-    # Run the text cleaning command and capture its exit status
     $CLEAN_CMD
     CLEAN_STATUS=\$?
-    
-    # Send notification based on completion status
+    echo '[DEBUG] Clean command status: \$CLEAN_STATUS' >&2
     notifyCompletion \$CLEAN_STATUS
-    
-    # Display extra information in the tmux session
     if [[ \$CLEAN_STATUS -eq 0 ]]; then
       echo \"✅ Text cleaning completed at \$(date)\"
-      
-      # Additional guaranteed popup methods for Linux/macOS/Windows
-      if command -v xmessage &> /dev/null; then
-        # Very basic X11 popup that will definitely show
-        xmessage -center \"Text Cleaner: Process Complete\" &
-      elif command -v zenity &> /dev/null; then
-        # Force a dialog box instead of just a notification
-        zenity --info --title=\"Text Cleaner\" --text=\"Process Complete\" --timeout=5 &
-      elif command -v kdialog &> /dev/null; then
-        # KDE dialog
-        kdialog --title \"Text Cleaner\" --passivepopup \"Process Complete\" 5 &
-      fi
     else
       echo \"❌ Text cleaning failed at \$(date)\"
     fi
     " C-m
     
-    echo "Text cleaning command sent to tmux session."
+    debug_log "Text cleaning command sent to tmux session"
     return 0
   fi
   
-  # If we got here, something went wrong
   echo "Unknown command or error. Use --help for usage information."
   return 1
 }
 
-# Create aliases for easier use
 alias tc="textCleaner"
 alias text-clean="textCleaner"
 alias hunspell="textCleaner"
 
-# Auto-create the session on sourcing this file
-(textCleaner --start > /dev/null 2>&1 &)
+# Start with no-history option by default
+(textCleaner --start --no-history > /dev/null 2>&1 &)
