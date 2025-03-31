@@ -1,12 +1,9 @@
 #!/bin/bash
-
 textCleaner() {
   echo "textCleaner Called from: ${BASH_SOURCE[1]} at line ${BASH_LINENO[0]}"
   textCleaner_start_session > /dev/null
-
   local TMUX_SESSION_NAME="text-cleaner"
   local SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-  local CMD="clean"  # Default command
   local PROMPT_FILE=""
   local CUSTOM_TEXT=""
   local NO_HISTORY=false
@@ -20,10 +17,6 @@ textCleaner() {
         CMD="$2"
         shift 2
         ;;
-      --prompt-file|-p)
-        PROMPT_FILE="$2"
-        shift 2
-        ;;
       --text|-t)
         CUSTOM_TEXT="$2"
         shift 2
@@ -32,8 +25,7 @@ textCleaner() {
         echo "Usage: textCleaner [OPTIONS]"
         echo ""
         echo "Options:"
-        echo "  --cmd COMMAND       Specify command (e.g., 'clean', 'view', 'stop', 'start')"
-        echo "  --prompt-file, -p FILE   Use custom prompt file"
+        echo "  --cmd COMMAND       Specify command (e.g., 'view', 'stop', 'start')"
         echo "  --text, -t TEXT          Clean specific text instead of clipboard"
         echo "  --help, -h               Show this help message"
         return 0
@@ -94,42 +86,6 @@ textCleaner() {
     start)
       textCleaner_start_session
       echo "Text cleaner session started."
-      return 0
-      ;;
-    clean)
-      local CLEAN_CMD="cleanClipboardText"
-      
-      if [[ -n "$PROMPT_FILE" ]]; then
-        CLEAN_CMD="$CLEAN_CMD --prompt-file \"${PROMPT_FILE}\""
-      fi
-      if [[ -n "$CUSTOM_TEXT" ]]; then
-        local ESCAPED_TEXT=$(echo "$CUSTOM_TEXT" | sed 's/"/\"/g')
-        textCleaner_send_keys "$TMUX_SESSION_NAME" "echo \"${ESCAPED_TEXT}\" | xclip -selection clipboard"
-        sleep 0.5
-        textCleanerDebug_log "Set custom text to clipboard: $CUSTOM_TEXT"
-      fi
-      
-      textCleanerDebug_log "Checking notify-send availability"
-      if command -v notify-send &> /dev/null; then
-        textCleanerDebug_log "Sending initial notification" || textCleanerDebug_log "Initial notify-send failed"
-      else
-        textCleanerDebug_log "notify-send not found, using echo"
-        echo "Cleaning text in progress..."
-      fi
-      
-      textCleaner_send_keys "$TMUX_SESSION_NAME" "
-      $CLEAN_CMD
-      CLEAN_STATUS=\$?
-      echo '[DEBUG] Clean command status: \$CLEAN_STATUS' >&2
-      notifyCompletion \$CLEAN_STATUS
-      if [[ \$CLEAN_STATUS -eq 0 ]]; then
-        echo \"✅ Text cleaning completed at \$(date)\"
-      else
-        echo \"❌ Text cleaning failed at \$(date)\"
-      fi
-      "
-      
-      textCleanerDebug_log "Text cleaning command sent to tmux session"
       return 0
       ;;
     *)

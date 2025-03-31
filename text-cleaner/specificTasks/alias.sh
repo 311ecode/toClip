@@ -1,4 +1,3 @@
-# Create aliases
-alias clean-clip="cleanClipboardText"
-alias hunspell="cleanClipboardText"  # Simple alias for quick access
-
+# Create aliases for text cleaning functionality
+alias clean-clip="clipboardFunctionDispatcher"
+alias hunspell="clipboardFunctionDispatcher"  # Simple alias for quick access
