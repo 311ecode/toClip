@@ -11,6 +11,7 @@ debug_log() {
 }
 
 textCleaner() {
+  echo "textCleaner Called from: ${BASH_SOURCE[1]} at line ${BASH_LINENO[0]}"
   local TMUX_SESSION_NAME="text-cleaner"
   local SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
   
@@ -93,35 +94,42 @@ textCleaner() {
     return 0
   fi
   
+  # New function to handle tmux send-keys with leading space
+  textCleaner_send_keys() {
+    local session="$1"
+    local command="$2"
+    tmux send-keys -t "$session" " $command" C-m
+  }
+  
   textCleaner_start_session() {
     if ! tmux has-session -t "$TMUX_SESSION_NAME" 2>/dev/null; then
       debug_log "Creating new tmux session: $TMUX_SESSION_NAME"
       tmux new-session -d -s "$TMUX_SESSION_NAME"
-      tmux send-keys -t "$TMUX_SESSION_NAME" "export DISPLAY=:1" C-m
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "export DISPLAY=:1"
       
       # Set history control if requested
       if [[ "$NO_HISTORY" == true ]]; then
-        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups" C-m
-        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'" C-m
+        textCleaner_send_keys "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups"
+        textCleaner_send_keys "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'"
       fi
       
-      tmux send-keys -t "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR" C-m
-      tmux send-keys -t "$TMUX_SESSION_NAME" "source ./cleanClipboardText.sh" C-m
-      tmux send-keys -t "$TMUX_SESSION_NAME" "echo 'Text cleaner session initialized and ready'" C-m
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR"
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "source ./cleanClipboardText.sh"
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "echo 'Text cleaner session initialized and ready'"
       sleep 1
       debug_log "Text cleaner session started and ready"
       return 0
     else
       debug_log "Session exists, updating environment"
-      tmux send-keys -t "$TMUX_SESSION_NAME" "export DISPLAY=:1" C-m
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "export DISPLAY=:1"
       
       # Set history control if requested
       if [[ "$NO_HISTORY" == true ]]; then
-        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups" C-m
-        tmux send-keys -t "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'" C-m
+        textCleaner_send_keys "$TMUX_SESSION_NAME" "export HISTCONTROL=ignorespace ignoredups"
+        textCleaner_send_keys "$TMUX_SESSION_NAME" "export HISTIGNORE='cleanClipboardText*:textCleaner*'"
       fi
       
-      tmux send-keys -t "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR" C-m
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "cd $SCRIPT_DIR"
       debug_log "Text cleaner session already running"
       return 0
     fi
@@ -154,21 +162,20 @@ textCleaner() {
     fi
     if [[ -n "$CUSTOM_TEXT" ]]; then
       local ESCAPED_TEXT=$(echo "$CUSTOM_TEXT" | sed 's/"/\"/g')
-      tmux send-keys -t "$TMUX_SESSION_NAME" "echo \"${ESCAPED_TEXT}\" | xclip -selection clipboard" C-m
+      textCleaner_send_keys "$TMUX_SESSION_NAME" "echo \"${ESCAPED_TEXT}\" | xclip -selection clipboard"
       sleep 0.5
       debug_log "Set custom text to clipboard: $CUSTOM_TEXT"
     fi
     
     debug_log "Checking notify-send availability"
     if command -v notify-send &> /dev/null; then
-      debug_log "Sending initial notification"
-       || debug_log "Initial notify-send failed"
+      debug_log "Sending initial notification" || debug_log "Initial notify-send failed"
     else
       debug_log "notify-send not found, using echo"
       echo "Cleaning text in progress..."
     fi
     
-    tmux send-keys -t "$TMUX_SESSION_NAME" "
+    textCleaner_send_keys "$TMUX_SESSION_NAME" "
     function notifyCompletion() {
       local status=\$1
       if command -v notify-send &> /dev/null; then
@@ -185,9 +192,9 @@ textCleaner() {
         fi
       fi
     }
-    " C-m
+    "
     
-    tmux send-keys -t "$TMUX_SESSION_NAME" "
+    textCleaner_send_keys "$TMUX_SESSION_NAME" "
     $CLEAN_CMD
     CLEAN_STATUS=\$?
     echo '[DEBUG] Clean command status: \$CLEAN_STATUS' >&2
@@ -197,7 +204,7 @@ textCleaner() {
     else
       echo \"❌ Text cleaning failed at \$(date)\"
     fi
-    " C-m
+    "
     
     debug_log "Text cleaning command sent to tmux session"
     return 0
