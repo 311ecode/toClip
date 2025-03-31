@@ -96,11 +96,3 @@ cleanClipboardText() {
   toClip "$cleanedText" "Cleaned text copied to clipboard."
 }
 
-# Create aliases
-alias clean-clip="cleanClipboardText"
-alias hunspell="cleanClipboardText"  # Simple alias for quick access
-
-# Execute if run directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  cleanClipboardText "$@"
-fi
