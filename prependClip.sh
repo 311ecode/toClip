@@ -1,0 +1,3 @@
+prependClip() {
+  toClip -p "$@"
+}
