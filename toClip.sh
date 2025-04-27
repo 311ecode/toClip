@@ -3,18 +3,21 @@ toClip() {
   local message
   local append=false
   local prepend=false
+  local commands=()
 
   # Help message
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat <<EOF
 Usage: toClip [OPTIONS] [TEXT] [MESSAGE]
 
-Copies text to the system clipboard, optionally appending or prepending.
+Copies text to the system clipboard, optionally appending, prepending, or executing commands.
 
 Options:
   -h, --help    Show this help message and exit
   -a, --append  Append TEXT to the current clipboard content.
   -p, --prepend Prepend TEXT to the current clipboard content.
+  -c, --command "SHELL COMMAND"
+                Execute the shell command and copy its stdout. Can be used multiple times.
 
 Examples:
   # Copy argument text
@@ -26,14 +29,20 @@ Examples:
   # Prepend text
   toClip -p "Important: " "Prepended!"
 
+  # Execute a command and copy its output
+  toClip -c "ls -la" "Output of ls copied!"
+
+  # Execute multiple commands (output will be concatenated)
+  toClip -c "pwd" -c "whoami" "Multiple command outputs copied!"
+
+  # Copy from piped input and prepend
+  echo "World" | toClip -p "Hello, " "Prepended greeting!"
+
   # Copy from a file
   toClip < input.txt
 
-  # Copy command output
-  ls -la | toClip
-
-  # Copy with piped input and show message
-  echo "World" | toClip -p "Hello, " "Prepended greeting!"
+  # Copy command output and append
+  ls -la | toClip -a " (from ls)" "ls output appended!"
 
   # Copy without arguments (waits for stdin input, press Ctrl+D to finish)
   toClip
@@ -54,6 +63,15 @@ EOF
         prepend=true
         shift
         ;;
+      -c|--command)
+        if [[ -n "$2" ]]; then
+          commands+=("$2")
+          shift 2
+        else
+          echo "Error: Option '$1' requires an argument." >&2
+          return 1
+        fi
+        ;;
       --) # End of options
         shift
         break
@@ -72,8 +90,31 @@ EOF
     esac
   done
 
-  # Read from stdin if no output from arguments
-  if [ -z "$output" ]; then
+  command_output=""
+  if [[ ${#commands[@]} -gt 0 ]]; then
+    for cmd in "${commands[@]}"; do
+      echo "Command executed: $cmd" >&2
+      local stdout=$(eval "$cmd")
+      local stderr_output=$(eval "$cmd" 2>&1 >/dev/null) # Capture stderr
+      if [[ -n "$stdout" ]]; then
+        echo "stdout:" >&2
+        echo "$stdout" >&2
+        command_output+="$stdout"
+      fi
+      if [[ -n "$stderr_output" ]]; then
+        echo "stderr:" >&2
+        echo "$stderr_output" >&2
+      fi
+      command_output+=$'\n' # Add a newline between command outputs
+    done
+    output="$command_output"
+  fi
+
+  # Read from stdin if no explicit output was provided via arguments or commands
+  if [ -z "$output" ] && [[ -t 0 ]]; then # Check if stdin is a terminal
+    # Only read from stdin if it's not a pipe
+    : # Do nothing, output remains empty, and we won't copy anything unless there was a command
+  elif [ -z "$output" ]; then
     output=$(cat)
   fi
 
