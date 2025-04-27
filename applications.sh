@@ -5,6 +5,6 @@ alias tclTree='toClip "$(tree "$@")"'
 
 # Function to copy gitMessages output to clipboard
 tclGmsgs() {
-    cls; gitMessages "$@" | xclip -selection clipboard
+  cls
+  gitMessages "$@" | xclip -selection clipboard
 }
-

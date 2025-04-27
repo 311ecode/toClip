@@ -6,7 +6,7 @@ toClip() {
   local commands=()
 
   # Help message
-  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  if [[ $1 == "-h" || $1 == "--help" ]]; then
     cat <<EOF
 Usage: toClip [OPTIONS] [TEXT] [MESSAGE]
 
@@ -55,38 +55,38 @@ EOF
   # Process options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -a|--append)
-        append=true
-        shift
-        ;;
-      -p|--prepend)
-        prepend=true
-        shift
-        ;;
-      -c|--command)
-        if [[ -n "$2" ]]; then
-          commands+=("$2")
-          shift 2
-        else
-          echo "Error: Option '$1' requires an argument." >&2
-          return 1
-        fi
-        ;;
-      --) # End of options
-        shift
-        break
-        ;;
-      -*)
-        echo "Error: Invalid option '$1'" >&2
+    -a | --append)
+      append=true
+      shift
+      ;;
+    -p | --prepend)
+      prepend=true
+      shift
+      ;;
+    -c | --command)
+      if [[ -n $2 ]]; then
+        commands+=("$2")
+        shift 2
+      else
+        echo "Error: Option '$1' requires an argument." >&2
         return 1
-        ;;
-      *)
-        output="$1"
-        shift
-        message="${1:-}"
-        shift
-        break # Assume the rest are text and message
-        ;;
+      fi
+      ;;
+    --) # End of options
+      shift
+      break
+      ;;
+    -*)
+      echo "Error: Invalid option '$1'" >&2
+      return 1
+      ;;
+    *)
+      output="$1"
+      shift
+      message="${1:-}"
+      shift
+      break # Assume the rest are text and message
+      ;;
     esac
   done
 
@@ -96,12 +96,12 @@ EOF
       echo "Command executed: $cmd" >&2
       local stdout=$(eval "$cmd")
       local stderr_output=$(eval "$cmd" 2>&1 >/dev/null) # Capture stderr
-      if [[ -n "$stdout" ]]; then
+      if [[ -n $stdout ]]; then
         echo "stdout:" >&2
         echo "$stdout" >&2
         command_output+="$stdout"
       fi
-      if [[ -n "$stderr_output" ]]; then
+      if [[ -n $stderr_output ]]; then
         echo "stderr:" >&2
         echo "$stderr_output" >&2
       fi
