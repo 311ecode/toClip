@@ -123,9 +123,7 @@ EOF
 
   clipboard_content=""
   if $append || $prepend; then
-    if command -v pbpaste >/dev/null 2>&1; then
-      clipboard_content=$(pbpaste)
-    elif command -v xclip >/dev/null 2>&1; then
+    if command -v xclip >/dev/null 2>&1; then
       clipboard_content=$(xclip -selection clipboard -o)
     fi
   fi
@@ -139,14 +137,11 @@ EOF
     final_output="$output"
   fi
 
-  if command -v pbcopy >/dev/null 2>&1; then
-    echo "$final_output" | pbcopy
-    [ -n "$message" ] && echo "$message" >&2
-  elif command -v xclip >/dev/null 2>&1; then
+  if command -v xclip >/dev/null 2>&1; then
     echo "$final_output" | xclip -selection clipboard
     [ -n "$message" ] && echo "$message" >&2
   else
-    echo "No clipboard utility found (pbcopy/xclip)." >&2
+    echo "No clipboard utility found (xclip)." >&2
     echo "$final_output"
   fi
 }

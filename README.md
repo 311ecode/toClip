@@ -91,7 +91,7 @@ Provides convenient aliases and functions:
 
 ## Dependencies
 
-- `xclip` (Linux) or `pbcopy`/`pbpaste` (macOS)
+- `xclip` (Linux)
 - Standard Unix utilities (cat, echo, etc.)
 
 ## Notes
