@@ -8,6 +8,7 @@ A collection of Bash scripts for enhanced clipboard operations with support for 
 2. **appendClip.sh** - Wrapper for appending to clipboard
 3. **prependClip.sh** - Wrapper for prepending to clipboard
 4. **applications.sh** - Convenience aliases and functions
+5. **tests/toClip_test.sh** - Test functions for toClip functionality
 
 ## Main Features
 
@@ -125,3 +126,13 @@ Supports multiple input methods:
 - Piped input
 - Command output
 - Interactive input (when no arguments provided)
+
+## Tests
+
+To run the tests, ensure `xclip` is installed, source the necessary scripts (including toClip.sh and tests/toClip_test.sh), and run:
+
+```bash
+test_toClip
+```
+
+The test function verifies basic functionality, append/prepend, and command execution including stderr.
