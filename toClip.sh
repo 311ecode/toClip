@@ -20,7 +20,7 @@ Options:
   -a, --append  Append TEXT to the current clipboard content.
   -p, --prepend Prepend TEXT to the current clipboard content.
   -c, --command "SHELL COMMAND"
-                Execute the shell command and copy its stdout. Can be used multiple times.
+                Execute the shell command and copy its output (stdout and stderr). Can be used multiple times.
 
 Examples:
   # Copy argument text
@@ -97,17 +97,12 @@ EOF
   if [[ ${#commands[@]} -gt 0 ]]; then
     for cmd in "${commands[@]}"; do
       echo "Command executed: $cmd" >&2
-      local stdout=$(eval "$cmd")
-      local stderr_output=$(eval "$cmd" 2>&1 >/dev/null) # Capture stderr
-      if [[ -n $stdout ]]; then
-        echo "stdout:" >&2
-        echo "$stdout" >&2
-        command_output+="$stdout"
+      local combined_output=$(eval "$cmd" 2>&1)
+      if [[ -n "$combined_output" ]]; then
+        echo "output:" >&2
+        echo "$combined_output" >&2
       fi
-      if [[ -n $stderr_output ]]; then
-        echo "stderr:" >&2
-        echo "$stderr_output" >&2
-      fi
+      command_output+="$combined_output"
       command_output+=$'\n' # Add a newline between command outputs
     done
     output="$command_output"

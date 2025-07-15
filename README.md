@@ -24,7 +24,7 @@ toClip [OPTIONS] [TEXT] [MESSAGE]
 - `-h, --help` - Show help message
 - `-a, --append` - Append text to current clipboard content
 - `-p, --prepend` - Prepend text to current clipboard content
-- `-c, --command` - Execute shell command and copy its output
+- `-c, --command` - Execute shell command and copy its output (stdout and stderr)
 
 #### Examples:
 ```bash
@@ -99,6 +99,7 @@ Provides convenient aliases and functions:
 - All commands support `-h` or `--help` for usage information
 - When no clipboard utility is found, outputs to stdout as fallback
 - For detailed help, run any command with `-h` option
+- When executing commands with -c, both stdout and stderr are included in the clipboard content
 
 ## Advanced Usage
 
