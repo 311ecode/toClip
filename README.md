@@ -26,6 +26,8 @@ toClip [OPTIONS] [TEXT] [MESSAGE]
 - `-a, --append` - Append text to current clipboard content
 - `-p, --prepend` - Prepend text to current clipboard content
 - `-c, --command` - Execute shell command and copy its output (stdout and stderr)
+- `-s, --source` - For piped input or text, prepend "Executed: SOURCE\n" to the content
+- `-S, --auto-source` - Automatically detect and prepend the source command for piped input
 
 #### Examples:
 ```bash
@@ -43,6 +45,12 @@ toClip -c "ls -la" "Directory listing copied"
 
 # Pipe input
 echo "Hello" | toClip -p "Greeting: " "Prepended greeting"
+
+# Pipe with source
+ls | toClip -s "ls" "Directory listing copied"
+
+# Pipe with auto source
+ls | toClip -S "Directory listing copied"
 ```
 
 ### appendClip.sh
@@ -99,8 +107,10 @@ Provides convenient aliases and functions:
 
 - All commands support `-h` or `--help` for usage information
 - When no clipboard utility is found, outputs to stdout as fallback
-- For detailed help, run any command with `-h` option
-- When executing commands with -c, both stdout and stderr are included in the clipboard content
+- For detailed help, run any command with -h option
+- When executing commands with -c, the clipboard content includes "Executed: <command>\n" followed by both stdout and stderr.
+- When using -s with piped input or text, includes "Executed: <source>\n" before the content.
+- When using -S with piped input, automatically detects the previous command(s) in the pipe and prepends "Executed: <cmd1> | <cmd2> | ...\n".
 
 ## Advanced Usage
 
@@ -110,8 +120,8 @@ Provides convenient aliases and functions:
 # Multiple commands concatenated
 toClip -c "date" -c "pwd" "System info copied"
 
-# Chaining with pipes
-ls | grep ".txt" | toClip -p "Text files: " "Text files list copied"
+# Chaining with pipes with auto source
+ls | grep ".txt" | toClip -S -p "Text files: " "Text files list copied"
 ```
 
 ### Error Handling
@@ -135,4 +145,4 @@ To run the tests, ensure `xclip` is installed, source the necessary scripts (inc
 test_toClip
 ```
 
-The test function verifies basic functionality, append/prepend, and command execution including stderr.
+The test function verifies basic functionality, append/prepend, command execution including stderr, source option, and auto source.

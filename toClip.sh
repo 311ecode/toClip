@@ -7,6 +7,8 @@ toClip() {
   local append=false
   local prepend=false
   local commands=()
+  local source=""
+  local auto_source=false
 
   # Help message
   if [[ $1 == "-h" || $1 == "--help" ]]; then
@@ -21,6 +23,10 @@ Options:
   -p, --prepend Prepend TEXT to the current clipboard content.
   -c, --command "SHELL COMMAND"
                 Execute the shell command and copy its output (stdout and stderr). Can be used multiple times.
+  -s, --source "SOURCE"
+                When using piped input or text (not with -c), prepend "Executed: SOURCE\n" to the content.
+  -S, --auto-source
+                Automatically detect the source command for piped input (not with -c or -s) and prepend "Executed: <detected>\n".
 
 Examples:
   # Copy argument text
@@ -47,10 +53,20 @@ Examples:
   # Copy command output and append
   ls -la | toClip -a " (from ls)" "ls output appended!"
 
+  # Copy piped with source
+  ls | toClip -s "ls" "Directory listing copied!"
+
+  # Copy piped with auto source
+  ls | toClip -S "Directory listing copied!"
+
   # Copy without arguments (waits for stdin input, press Ctrl+D to finish)
   toClip
 
 Note: If no clipboard utility is found, outputs to stdout as fallback.
+When using -c, the copied content includes "Executed: <command>\n" before each command's output (stdout and stderr combined).
+When using -s, prepends "Executed: <source>\n" to the text or piped input.
+When using -S, detects previous commands in pipe and prepends "Executed: <cmd1> | <cmd2> | ...\n".
+Cannot use -s with -c, or -S with -c or -s.
 EOF
     return 0
   fi
@@ -75,6 +91,19 @@ EOF
         return 1
       fi
       ;;
+    -s | --source)
+      if [[ -n $2 ]]; then
+        source="$2"
+        shift 2
+      else
+        echo "Error: Option '$1' requires an argument." >&2
+        return 1
+      fi
+      ;;
+    -S | --auto-source)
+      auto_source=true
+      shift
+      ;;
     --) # End of options
       shift
       break
@@ -93,6 +122,21 @@ EOF
     esac
   done
 
+  if [ -n "$source" ] && [[ ${#commands[@]} -gt 0 ]]; then
+    echo "Error: Cannot use --source with --command" >&2
+    return 1
+  fi
+
+  if $auto_source && [[ ${#commands[@]} -gt 0 ]]; then
+    echo "Error: Cannot use --auto-source with --command" >&2
+    return 1
+  fi
+
+  if $auto_source && [ -n "$source" ]; then
+    echo "Error: Cannot use --auto-source with --source" >&2
+    return 1
+  fi
+
   command_output=""
   if [[ ${#commands[@]} -gt 0 ]]; then
     for cmd in "${commands[@]}"; do
@@ -102,18 +146,36 @@ EOF
         echo "output:" >&2
         echo "$combined_output" >&2
       fi
-      command_output+="$combined_output"
-      command_output+=$'\n' # Add a newline between command outputs
+      command_output+="Executed: $cmd\n$combined_output"
+      command_output+=$'\n'
     done
     output="$command_output"
   fi
 
   # Read from stdin if no explicit output was provided via arguments or commands
   if [ -z "$output" ] && [[ -t 0 ]]; then # Check if stdin is a terminal
-    # Only read from stdin if it's not a pipe
     : # Do nothing, output remains empty, and we won't copy anything unless there was a command
   elif [ -z "$output" ]; then
     output=$(cat)
+  fi
+
+  # Add source prefix if provided and not using commands
+  if [ -n "$source" ] && [[ ${#commands[@]} -eq 0 ]]; then
+    output="Executed: $source\n$output"
+  fi
+
+  # Auto source for piped input
+  if $auto_source && [[ ${#commands[@]} -eq 0 ]] && [ ! -t 0 ]; then
+    previous_pids=$(ps -o pid --no-headers --ppid $PPID | awk -v me=$$ '$1 != me' | sort -n)
+    previous_cmds=""
+    for pid in $previous_pids; do
+      cmd=$(ps -o command --no-headers -p $pid | sed 's/^\s*//; s/\s*$//')
+      previous_cmds+="$cmd | "
+    done
+    previous_cmds=${previous_cmds% | }
+    if [ -n "$previous_cmds" ]; then
+      output="Executed: $previous_cmds\n$output"
+    fi
   fi
 
   clipboard_content=""
@@ -133,10 +195,10 @@ EOF
   fi
 
   if command -v xclip >/dev/null 2>&1; then
-    echo "$final_output" | xclip -selection clipboard
+    printf "%s" "$final_output" | xclip -selection clipboard
     [ -n "$message" ] && echo "$message" >&2
   else
     echo "No clipboard utility found (xclip)." >&2
-    echo "$final_output"
+    printf "%s" "$final_output"
   fi
 }
