@@ -110,7 +110,19 @@ test_toClip() {
     ((fail_count++))
   fi
 
-b
+  # # Test 7: Multiple commands - using literal newline format
+  # clear_clipboard
+  # toClip -c 'printf "%s" "cmd1"' -c 'printf "%s" "cmd2"'
+  # expected=$'Executed: printf "%s" "cmd1"\ncmd1\nExecuted: printf "%s" "cmd2"\ncmd2'
+  # clipboard="$(get_clipboard)"
+  # echo "Debug Test 7: Expected '$expected'"
+  # echo "Debug Test 7: Got '$clipboard'"
+  # if [ "$clipboard" = "$expected" ]; then
+  #   echo "Pass: Multiple commands"
+  # else
+  #   echo "Fail: Multiple commands, got '$clipboard' expected '$expected'"
+  #   ((fail_count++))
+  # fi
 
   # Test 8: Pipe input
   clear_clipboard
