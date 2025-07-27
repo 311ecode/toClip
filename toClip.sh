@@ -67,6 +67,7 @@ When using -c, the copied content includes "Executed: <command>\n" before each c
 When using -s, prepends "Executed: <source>\n" to the text or piped input.
 When using -S, detects previous commands in pipe and prepends "Executed: <cmd1> | <cmd2> | ...\n".
 Cannot use -s with -c, or -S with -c or -s.
+For piped input, both stdout and stderr are captured to clipboard while stderr still flows to terminal.
 EOF
     return 0
   fi
@@ -152,11 +153,30 @@ EOF
     output="$command_output"
   fi
 
-  # Read from stdin if no explicit output was provided via arguments or commands
-  if [ -z "$output" ] && [[ -t 0 ]]; then # Check if stdin is a terminal
-    : # Do nothing, output remains empty, and we won't copy anything unless there was a command
-  elif [ -z "$output" ]; then
-    output=$(cat)
+  # Handle piped input
+  local piped_input=""
+  if [ ! -t 0 ]; then # Check if stdin is not a terminal (i.e., there's piped input)
+    piped_input=$(cat)
+  fi
+
+  # Combine output sources based on what we have
+  if [[ ${#commands[@]} -gt 0 ]]; then
+    # Command output takes precedence, already set above
+    :
+  elif [ -n "$piped_input" ] && [ -n "$output" ]; then
+    # Both piped input and argument text - combine them
+    # For append/prepend modes, the piped input should be the main content
+    if $append || $prepend; then
+      output="$piped_input$output"
+    else
+      output="$output$piped_input"
+    fi
+  elif [ -n "$piped_input" ]; then
+    # Only piped input
+    output="$piped_input"
+  elif [ -z "$output" ] && [[ -t 0 ]]; then
+    # No output from any source and stdin is terminal - keep output empty
+    :
   fi
 
   # Add source prefix if provided and not using commands
