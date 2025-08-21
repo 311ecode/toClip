@@ -21,10 +21,9 @@ toClip_testAllSuites() {
 
   local ignored_tests=()  # 🚫 Add test names to skip if needed
 
-  
+
   bashTestRunner test_functions ignored_tests
   local exit_code=$?
-  
+
 
 }
-

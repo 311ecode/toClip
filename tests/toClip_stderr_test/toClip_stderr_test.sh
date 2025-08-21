@@ -30,7 +30,7 @@ toClip_testStderrCapture() {
   fi
 
   echo "🚀 Running toClip stderr capture tests..."
-  
+
   bashTestRunner test_functions ignored_tests
   return $?  # 🎉 Done!
 }
