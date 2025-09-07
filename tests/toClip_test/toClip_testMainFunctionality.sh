@@ -16,6 +16,7 @@ toClip_testMainFunctionality() {
     "toClip_testSourceWithCommandError"
     "toClip_testAutoSourceSkip"
   )
+    # "toClip_testPassthrough"  # Added passthrough test
 
   local ignored_tests=()  # 🚫 Add test names to skip if needed
 

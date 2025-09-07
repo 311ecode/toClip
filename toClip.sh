@@ -16,6 +16,7 @@ toClip() {
 Usage: toClip [OPTIONS] [TEXT] [MESSAGE]
 
 Copies text to the system clipboard, optionally appending, prepending, or executing commands.
+Also outputs the content to stdout for passthrough viewing.
 
 Options:
   -h, --help    Show this help message and exit
@@ -29,45 +30,18 @@ Options:
                 Automatically detect the source command for piped input (not with -c or -s) and prepend "Executed: <detected>\n".
 
 Examples:
-  # Copy argument text
+  # Copy argument text and display it
   toClip "text to copy" "Copied!"
 
-  # Append text
-  toClip -a " text to add" "Appended!"
-
-  # Prepend text
-  toClip -p "Important: " "Prepended!"
-
-  # Execute a command and copy its output
+  # Execute command, copy output, and display it
   toClip -c "ls -la" "Output of ls copied!"
 
-  # Execute multiple commands (output will be concatenated)
-  toClip -c "pwd" -c "whoami" "Multiple command outputs copied!"
-
-  # Copy from piped input and prepend
+  # Copy from piped input, prepend, and display the result
   echo "World" | toClip -p "Hello, " "Prepended greeting!"
 
-  # Copy from a file
-  toClip < input.txt
-
-  # Copy command output and append
-  ls -la | toClip -a " (from ls)" "ls output appended!"
-
-  # Copy piped with source
-  ls | toClip -s "ls" "Directory listing copied!"
-
-  # Copy piped with auto source
-  ls | toClip -S "Directory listing copied!"
-
-  # Copy without arguments (waits for stdin input, press Ctrl+D to finish)
-  toClip
-
-Note: If no clipboard utility is found, outputs to stdout as fallback.
-When using -c, the copied content includes "Executed: <command>\n" before each command's output (stdout and stderr combined).
-When using -s, prepends "Executed: <source>\n" to the text or piped input.
-When using -S, detects previous commands in pipe and prepends "Executed: <cmd1> | <cmd2> | ...\n".
-Cannot use -s with -c, or -S with -c or -s.
-For piped input, both stdout and stderr are captured to clipboard while stderr still flows to terminal.
+Note: Content is always displayed on stdout in addition to being copied to clipboard.
+If no clipboard utility is found, only outputs to stdout.
+When using -c, the copied content includes "Executed: <command>\n" before each command's output.
 EOF
     return 0
   fi
@@ -214,11 +188,14 @@ EOF
     final_output="$output"
   fi
 
+  # Always output to stdout for passthrough
+  printf "%s" "$final_output"
+
+  # Also copy to clipboard if available
   if command -v xclip >/dev/null 2>&1; then
     printf "%s" "$final_output" | xclip -selection clipboard
     [ -n "$message" ] && echo "$message" >&2
   else
-    echo "No clipboard utility found (xclip)." >&2
-    printf "%s" "$final_output"
+    echo "No clipboard utility found (xclip). Output only to stdout." >&2
   fi
 }
