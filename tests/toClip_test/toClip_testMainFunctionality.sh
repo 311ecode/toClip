@@ -15,6 +15,7 @@ toClip_testMainFunctionality() {
     "toClip_testTextWithSource"
     "toClip_testSourceWithCommandError"
     "toClip_testAutoSourceSkip"
+    "toClip_testAutoCommandWithEnvVar"
   )
     # "toClip_testPassthrough"  # Added passthrough test
 
