@@ -17,6 +17,7 @@ toClip_testAllSuites() {
   local test_functions=(
     "toClip_testStderrCapture"
     "toClip_testMainFunctionality"
+    "toClip_testAutoCommand"
   )
 
   local ignored_tests=()  # 🚫 Add test names to skip if needed
