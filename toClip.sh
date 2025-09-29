@@ -85,14 +85,8 @@ EOF
         return 1
         ;;
       *)
-        output="$1"; shift
-        if [[ $# -gt 0 ]]; then
-          message="$1"; shift
-        fi
-        while [[ $# -gt 0 ]]; do
-          output="$output $1"; shift
-        done
-        toClip_debug "Parsed output='$output' msg='$message'"
+        output="$*"
+        toClip_debug "Parsed output='$output'"
         break
         ;;
     esac
@@ -120,8 +114,7 @@ EOF
     fi
 
     # Env assign followed by space: VAR=... <space>
-    if [[ "$text" =~ ^[A-Z_][A-Z0-9_]*=\
-[^[:space:]]*[[:space:]] ]]; then
+    if [[ "$text" =~ ^[A-Z_][A-Z0-9_]*=[^[:space:]]*[[:space:]] ]]; then
       return 0
     fi
 
@@ -136,12 +129,7 @@ EOF
     if [[ "$text" =~ [[:space:]] ]]; then
       local first="${text%% *}"
       case "$first" in
-        ls|cat|grep|find|awk|sed|sort|uniq|head|tail|wc|cut|\
-tr|date|ps|kill|chmod|chown|mkdir|rmdir|cp|mv|rm|ln|pwd|\
-echo|printf|which|type|alias|history|jobs|fg|bg|timeout|\
-xargs|parallel|npm|yarn|pip|brew|apt|yum|pacman|cargo|go|\
-mvn|gradle|git|docker|kubectl|make|cmake|node|python|\
-python3|ruby|java|javac|gcc|clang|rustc)
+        ls|cat|grep|find|awk|sed|sort|uniq|head|tail|wc|cut|tr|date|ps|kill|chmod|chown|mkdir|rmdir|cp|mv|rm|ln|pwd|echo|printf|which|type|alias|history|jobs|fg|bg|timeout|xargs|parallel|npm|yarn|pip|brew|apt|yum|pacman|cargo|go|mvn|gradle|git|docker|kubectl|make|cmake|node|python|python3|ruby|java|javac|gcc|clang|rustc)
           return 0 ;;
       esac
       # Paths like ./tool or /usr/bin/tool with args
@@ -149,8 +137,7 @@ python3|ruby|java|javac|gcc|clang|rustc)
         return 0
       fi
       # Command-with-flags shape: cmd -x ...
-      if [[ "$text" =~ ^[a-zA-Z0-9_./-]+[[:space:]]+-[A-Za-z] ]]
-      then
+      if [[ "$text" =~ ^[a-zA-Z0-9_./-]+[[:space:]]+-[A-Za-z] ]]; then
         return 0
       fi
     fi
@@ -158,11 +145,9 @@ python3|ruby|java|javac|gcc|clang|rustc)
     return 1
   }
 
-  toClip_debug "Auto-detect precheck: cmds=${#commands[@]} "\
-"append=$append prepend=$prepend out='${output}'"
+  toClip_debug "Auto-detect precheck: cmds=${#commands[@]} append=$append prepend=$prepend out='${output}'"
 
-  if [[ ${#commands[@]} -eq 0 ]] && ! $append && \
-     ! $prepend && [ -n "$output" ]; then
+  if [[ ${#commands[@]} -eq 0 ]] && ! $append && ! $prepend && [ -n "$output" ]; then
     toClip_debug "Run auto-detection"
     if toClip_is_likely_command "$output"; then
       commands=("$output"); auto_command=true
@@ -211,15 +196,12 @@ python3|ruby|java|javac|gcc|clang|rustc)
     output="Executed: $source\n$output"
   fi
 
-  if $auto_source && [[ ${#commands[@]} -eq 0 ]] && \
-     [ ! -t 0 ]; then
+  if $auto_source && [[ ${#commands[@]} -eq 0 ]] && [ ! -t 0 ]; then
     local previous_pids previous_cmds cmd
-    previous_pids=$(ps -o pid --no-headers --ppid $PPID | \
-      awk -v me=$$ '$1 != me' | sort -n)
+    previous_pids=$(ps -o pid --no-headers --ppid $PPID | awk -v me=$$ '$1 != me' | sort -n)
     previous_cmds=""
     for pid in $previous_pids; do
-      cmd=$(ps -o command --no-headers -p "$pid" | \
-        sed 's/^\s*//; s/\s*$//')
+      cmd=$(ps -o command --no-headers -p "$pid" | sed 's/^\s*//; s/\s*$//')
       previous_cmds+="$cmd | "
     done
     previous_cmds=${previous_cmds% | }
@@ -250,8 +232,7 @@ python3|ruby|java|javac|gcc|clang|rustc)
     printf "%s" "$final_output" | xclip -selection clipboard
     [ -n "$message" ] && echo "$message" >&2
   else
-    echo "No clipboard utility found (xclip). Output only." \
-      >&2
+    echo "No clipboard utility found (xclip). Output only." >&2
   fi
 }
 # end of toClip
