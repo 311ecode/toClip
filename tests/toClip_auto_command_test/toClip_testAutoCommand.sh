@@ -8,6 +8,7 @@ toClip_testAutoCommand() {
   # Test function registry
   local test_functions=(
     "toClip_testAutoCommandEnvVar"
+    "toClip_testAutoCommandMixedCaseEnvVar"
     "toClip_testAutoCommandSimple"
     "toClip_testAutoCommandPlainText"
     "toClip_testExplicitCommand"

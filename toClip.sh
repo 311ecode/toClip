@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 # Copyright © 2025 Imre Toth
 # <tothimre@gmail.com> - Proprietary Software.
@@ -114,7 +115,7 @@ EOF
     fi
 
     # Env assign followed by space: VAR=... <space>
-    if [[ "$text" =~ ^[A-Z_][A-Z0-9_]*=[^[:space:]]*[[:space:]] ]]; then
+    if [[ "$text" =~ ^[a-zA-Z_][a-zA-Z0-9_]*=[^[:space:]]*[[:space:]] ]]; then
       return 0
     fi
 
@@ -235,4 +236,3 @@ EOF
     echo "No clipboard utility found (xclip). Output only." >&2
   fi
 }
-# end of toClip
