@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # Copyright © 2025 Imre Toth
 # <tothimre@gmail.com> - Proprietary Software.
@@ -114,33 +113,30 @@ EOF
       return 1
     fi
 
-    # Env assign followed by space: VAR=... <space>
+    # Heuristic 1: Env var assignment `VAR=val command`
     if [[ "$text" =~ ^[a-zA-Z_][a-zA-Z0-9_]*=[^[:space:]]*[[:space:]] ]]; then
       return 0
     fi
 
-    # Obvious shell syntax markers
+    # Heuristic 2: Obvious shell syntax markers
     if [[ "$text" =~ (\|\|)|(\&\&)|[\|\;\<\>] ]]; then
       return 0
     fi
 
-    # If there is at least one space, allow a safer
-    # whitelist on the first token to avoid false
-    # positives like "some text".
-    if [[ "$text" =~ [[:space:]] ]]; then
-      local first="${text%% *}"
-      case "$first" in
-        ls|cat|grep|find|awk|sed|sort|uniq|head|tail|wc|cut|tr|date|ps|kill|chmod|chown|mkdir|rmdir|cp|mv|rm|ln|pwd|echo|printf|which|type|alias|history|jobs|fg|bg|timeout|xargs|parallel|npm|yarn|pip|brew|apt|yum|pacman|cargo|go|mvn|gradle|git|docker|kubectl|make|cmake|node|python|python3|ruby|java|javac|gcc|clang|rustc)
-          return 0 ;;
-      esac
-      # Paths like ./tool or /usr/bin/tool with args
-      if [[ "$first" == ./* || "$first" == /* ]]; then
-        return 0
-      fi
-      # Command-with-flags shape: cmd -x ...
-      if [[ "$text" =~ ^[a-zA-Z0-9_./-]+[[:space:]]+-[A-Za-z] ]]; then
-        return 0
-      fi
+    local first_token="${text%% *}"
+
+    # Heuristic 3: Check if the first token is a valid command.
+    # This is the most reliable method and covers executables in PATH,
+    # aliases, functions, builtins, and relative/absolute paths.
+    if command -v -- "$first_token" &>/dev/null; then
+      return 0
+    fi
+
+    # Heuristic 4: Fallback for command-like syntax `cmd -f`
+    # Catches cases where `command -v` might fail (e.g., script not in PATH)
+    # but the structure strongly suggests a command.
+    if [[ "$text" =~ ^[a-zA-Z0-9_./-]+[[:space:]]+-[A-Za-z] ]]; then
+      return 0
     fi
 
     return 1
@@ -236,3 +232,4 @@ EOF
     echo "No clipboard utility found (xclip). Output only." >&2
   fi
 }
+# end of toClip

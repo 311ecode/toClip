@@ -13,6 +13,8 @@ toClip_testAutoCommand() {
     "toClip_testAutoCommandPlainText"
     "toClip_testExplicitCommand"
     "toClip_testAutoCommandPipeline"
+    "toClip_testAutoCommandHyphenated"
+    "toClip_testAutoCommandSingle"
   )
 
   local ignored_tests=()
