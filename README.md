@@ -1,148 +1,201 @@
-# Clipboard Utilities
+# toClip - Advanced Clipboard Management Tool
 
-A collection of Bash scripts for enhanced clipboard operations with support for appending, prepending, and command execution.
+## Overview
 
-## Scripts Overview
+`toClip` is a comprehensive Bash script toolkit for enhanced clipboard operations. It supports copying text, executing commands, appending/prepending content, and intelligent auto-detection of shell commands. The tool is designed for command-line users and developers who need flexible clipboard management.
 
-1. **toClip.sh** - Main clipboard utility with advanced features
-2. **appendClip.sh** - Wrapper for appending to clipboard
-3. **prependClip.sh** - Wrapper for prepending to clipboard
-4. **applications.sh** - Convenience aliases and functions
-5. **tests/toClip_test.sh** - Test functions for toClip functionality
+## Quick Start
 
-## Main Features
+### Basic Usage
 
-### toClip.sh
-
-The primary clipboard utility with multiple operation modes.
-
-#### Usage:
+Copy text to clipboard:
 ```bash
-toClip [OPTIONS] [TEXT] [MESSAGE]
+toClip "Hello World"
 ```
 
-#### Options:
-- `-h, --help` - Show help message
-- `-a, --append` - Append text to current clipboard content
-- `-p, --prepend` - Prepend text to current clipboard content
-- `-c, --command` - Execute shell command and copy its output (stdout and stderr)
-- `-s, --source` - For piped input or text, prepend "Executed: SOURCE\n" to the content
-- `-S, --auto-source` - Automatically detect and prepend the source command for piped input
-
-#### Examples:
+Get help:
 ```bash
-# Basic copy
-toClip "sample text" "Copied!"
-
-# Append to clipboard
-toClip -a " additional text" "Appended!"
-
-# Prepend to clipboard
-toClip -p "Important: " "Prepended!"
-
-# Execute command and copy output
-toClip -c "ls -la" "Directory listing copied"
-
-# Pipe input
-echo "Hello" | toClip -p "Greeting: " "Prepended greeting"
-
-# Pipe with source
-ls | toClip -s "ls" "Directory listing copied"
-
-# Pipe with auto source
-ls | toClip -S "Directory listing copied"
+toClip -h
+# or
+toClip --help
 ```
 
-### appendClip.sh
+### No Required Parameters
 
-Simple wrapper for appending to clipboard.
+**No parameters are required** for basic usage. The tool will:
+- Display help with `-h` or `--help`
+- Accept piped input when no arguments provided
+- Copy provided text directly when arguments given
 
-#### Usage:
+## Core Commands
+
+### Copy Text
 ```bash
-appendClip [TEXT] [MESSAGE]
+toClip "sample text"
 ```
 
-No parameters required - uses same parameters as toClip's append mode.
-
-### prependClip.sh
-
-Simple wrapper for prepending to clipboard.
-
-#### Usage:
+### Append to Clipboard
 ```bash
-prependClip [TEXT] [MESSAGE]
+toClip -a " additional text"
 ```
 
-No parameters required - uses same parameters as toClip's prepend mode.
+### Prepend to Clipboard  
+```bash
+toClip -p "Important: "
+```
 
-### applications.sh
+### Execute Commands
+```bash
+toClip -c "ls -la"
+```
 
-Provides convenient aliases and functions:
+### Auto-Command Detection
+Automatically detects and executes likely shell commands:
+```bash
+toClip "pwd"           # Auto-detects as command
+toClip "just text"     # Treated as plain text
+```
 
-#### Aliases:
-- `tclp` - Shortcut for `toClip`
-- `tclTree` - Copies directory tree structure to clipboard
+## Convenience Wrappers
 
-#### Functions:
-- `tclGmsgs` - Copies git commit messages to clipboard
+### appendClip
+Simple wrapper for appending text:
+```bash
+appendClip " more content"
+```
 
-## Installation
+### prependClip  
+Simple wrapper for prepending text:
+```bash
+prependClip "Note: "
+```
 
-1. Place all `.sh` files in your preferred scripts directory
-2. Ensure they are executable:
-   ```bash
-   chmod +x *.sh
-   ```
-3. Source them in your shell configuration:
-   ```bash
-   source /path/to/scripts/applications.sh
-   ```
+### Aliases
+- `tclp` - Alias for `toClip`
+- `tclTree` - Copy tree output to clipboard
+- `tclGmsgs` - Copy git messages to clipboard
+
+## Advanced Features
+
+### Source Tracking
+Include source information with copied content:
+
+```bash
+# Manual source
+ls | toClip -s "ls command"
+
+# Auto-detect source
+ls | toClip -S
+```
+
+### Command Execution with Error Capture
+Commands capture both stdout and stderr:
+```bash
+toClip -c "ls /nonexistent"  # Captures error message
+```
+
+### Pipeline Support
+Works seamlessly in pipelines:
+```bash
+echo "hello" | toClip | tr 'a-z' 'A-Z'
+find . -name "*.txt" | toClip -p "Text files:
+"
+```
+
+## Options Reference
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show comprehensive help |
+| `-a, --append` | Append text to current clipboard |
+| `-p, --prepend` | Prepend text to current clipboard |
+| `-c, --command` | Execute command and copy output |
+| `-s, --source` | Include source label with input |
+| `-S, --auto-source` | Auto-detect pipeline source |
+
+## Auto-Command Detection
+
+The tool intelligently detects shell commands using heuristics:
+- Environment variable assignments (`VAR=value cmd`)
+- Shell syntax markers (`|`, `&&`, `;`, `<`, `>`)
+- Valid commands in PATH, aliases, functions
+- Command-like syntax patterns
 
 ## Dependencies
 
-- `xclip` (Linux)
-- Standard Unix utilities (cat, echo, etc.)
+- **xclip**: Required for clipboard operations
+- Standard Unix utilities: `cat`, `echo`, `ps`, etc.
 
-## Notes
+## Testing
 
-- All commands support `-h` or `--help` for usage information
-- When no clipboard utility is found, outputs to stdout as fallback
-- For detailed help, run any command with -h option
-- When executing commands with -c, the clipboard content includes "Executed: <command>\n" followed by both stdout and stderr.
-- When using -s with piped input or text, includes "Executed: <source>\n" before the content.
-- When using -S with piped input, automatically detects the previous command(s) in the pipe and prepends "Executed: <cmd1> | <cmd2> | ...\n".
-
-## Advanced Usage
-
-### Combining Commands
-
-```bash
-# Multiple commands concatenated
-toClip -c "date" -c "pwd" "System info copied"
-
-# Chaining with pipes with auto source
-ls | grep ".txt" | toClip -S -p "Text files: " "Text files list copied"
-```
-
-### Error Handling
-
-- Command errors are displayed to stderr
-- Clipboard operations fail gracefully if no clipboard utility is available
-
-### Input Methods
-
-Supports multiple input methods:
-- Direct arguments
-- Piped input
-- Command output
-- Interactive input (when no arguments provided)
-
-## Tests
-
-To run the tests, ensure `xclip` is installed, source the necessary scripts (including toClip.sh and tests/toClip_test.sh), and run:
-
+Run comprehensive test suite:
 ```bash
 test_toClip
 ```
 
-The test function verifies basic functionality, append/prepend, command execution including stderr, source option, and auto source.
+Test categories include:
+- Basic copy operations
+- Append/prepend functionality  
+- Command execution with stdout/stderr
+- Auto-command detection
+- Pipeline behavior
+- Source tracking
+
+## File Structure
+
+```
+toClip/
+├── toClip.sh              # Main script
+├── appendClip.sh          # Append wrapper
+├── prependClip.sh         # Prepend wrapper
+├── applications.sh        # Aliases and functions
+├── tests/                 # Comprehensive test suite
+│   ├── toClip_test/       # Main functionality tests
+│   ├── toClip_auto_command_test/ # Auto-detection tests
+│   ├── toClip_stderr_test/ # Error capture tests
+│   └── test_all/          # Complete test runner
+└── README.md              # This documentation
+```
+
+## Examples
+
+### Basic Workflow
+```bash
+# Copy current directory listing
+toClip -c "ls -la"
+
+# Append timestamp
+toClip -a " $(date)"
+
+# Prepend header
+toClip -p "Project Files:
+"
+```
+
+### Advanced Usage
+```bash
+# Auto-detect command in pipeline
+find . -name "*.sh" | toClip -S
+
+# Multiple commands
+toClip -c "date" -c "whoami" -c "pwd"
+
+# Complex pipeline with source tracking
+git status | grep modified | toClip -s "git modified" -p "Changes:
+"
+```
+
+## Notes
+
+- All commands support `-h` or `--help` for immediate assistance
+- When `xclip` is unavailable, output goes to stdout as fallback
+- The tool maintains clipboard content between operations
+- Error messages are captured and included in clipboard content
+- Works in interactive and scripted environments
+
+For detailed help on any command, use the `-h` flag:
+```bash
+toClip -h
+appendClip -h
+prependClip -h
+```
